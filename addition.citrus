@@ -1,8 +1,8 @@
 grammar Addition
   rule addition
     (number ('+' number)+) {
-      find(:number, true).inject do |m, n|
-        m.value + n.value
+      find(:number, true).inject(0) do |m, n|
+        m + n.value
       end
     }
   end
