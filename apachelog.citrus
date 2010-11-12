@@ -1,0 +1,110 @@
+require 'time'
+
+# A simple grammar for Apache log entries in the common log format.
+#
+# Apache common log format is "%h %l %u %t \"%r\" %>s %b".
+#
+# %h   =  Client's IP address
+# %l   =  Client's RFC 1413 identity
+# %u   =  userid of the person requesting the document
+# %t   =  Time that the server finished processing the request
+# %r   =  HTTP request line
+# %>s  =  Response status code
+# %b   =  Size of the response
+#
+# Example:
+#
+# 66.249.64.13 - - [18/Sep/2004:11:07:48 +1000] "GET / HTTP/1.0" 200 6433
+#
+grammar ApacheCommonLogEntry
+  rule common_log_entry
+    ( ip_address ' '    # %h
+      identity ' '      # %l
+      userid ' '        # %u
+      timestamp ' '     # %t
+      http_request ' '  # %r
+      status_code ' '   # %>s
+      response_size     # %b
+    ) {
+      def time
+        timestamp.value
+      end
+
+      def status
+        status_code.value
+      end
+
+      def size
+        response_size.value
+      end
+    }
+  end
+
+  rule ip_address
+    dec_octet '.' dec_octet '.' dec_octet '.' dec_octet
+  end
+
+  rule dec_octet
+      '25' [0-5]        # 250-255
+    | '2' [0-4] digit   # 200-249
+    | '1' digit digit   # 100-199
+    | [1-9] digit       # 10-99
+    | digit             # 0-9
+  end
+
+  rule digit
+    [0-9]
+  end
+
+  rule identity
+    /\S+/
+  end
+
+  rule userid
+    /\S+/
+  end
+
+  rule timestamp
+    ('[' ~']' ']') {
+      # Returns only the portion of the timestamp string within the [].
+      def ts_string
+        # Each match object has a method called #matches that returns an array
+        # of all that match's submatches. In this case, the second submatch (at
+        # index 1) contains the text that comes in between the [].
+        matches[1]
+      end
+
+      # Returns the time value of this timestamp.
+      def value
+        # Need to substitute first colon in order for Time#parse to work
+        # correctly (e.g. "18/Sep/2004:11:07:48 +1000" won't parse correctly but
+        # "18/Sep/2004 11:07:48 +1000" will.
+        Time.parse(ts_string.sub(':', ' '))
+      end
+    }
+  end
+
+  rule http_request
+    '"' ~'"' '"'
+  end
+
+  rule status_code
+    (digit digit digit) { to_i }
+  end
+
+  rule response_size
+    digit+ { to_i }
+  end
+end
+
+grammar ApacheCommonLogFile
+  include ApacheCommonLogEntry
+
+  rule common_log_file
+    (common_log_entry ("\n" common_log_entry)*) {
+      def entries
+        find(:common_log_entry)
+      end
+    }
+  end
+end

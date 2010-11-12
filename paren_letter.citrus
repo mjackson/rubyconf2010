@@ -1,0 +1,19 @@
+grammar ParenLetter
+  rule paren_letter
+    ('(' (paren_letter | letter) ')') {
+      def value
+        find(:letter, true).first
+      end
+
+      def nesting
+        find(:paren_letter, true).size + 1
+      end
+    }
+  end
+
+  rule letter
+    [a-zA-Z]
+  end
+end
+
+

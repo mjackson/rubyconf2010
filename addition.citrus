@@ -1,0 +1,15 @@
+grammar Addition
+  rule addition
+    (number ('+' number)+) {
+      find(:number, true).inject do |m, n|
+        m.value + n.value
+      end
+    }
+  end
+
+  rule number
+    [0-9] { to_i }
+  end
+end
+
+
